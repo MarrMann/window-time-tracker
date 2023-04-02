@@ -4,16 +4,28 @@ pub struct Window {
     pub id: i32,
     pub title: String,
     pub start_time: String,
-    pub end_time: String
+    pub end_time: String,
+    pub category: Option<i32>,
 }
 
 impl Window {
-    pub fn new(title: String, start_time: String, end_time: String) -> Window {
+    pub fn new(title: String, start_time: String, end_time: String, category: Option<i32>) -> Window {
         Window {
             id: 0,
             title,
             start_time,
-            end_time
+            end_time,
+            category
+        }
+    }
+
+    pub fn clone(&self) -> Window {
+        Window {
+            id: self.id,
+            title: self.title.clone(),
+            start_time: self.start_time.clone(),
+            end_time: self.end_time.clone(),
+            category: self.category
         }
     }
 }
@@ -42,6 +54,7 @@ pub fn create_or_update_entry(window: Window) -> Result<()> {
             title: row.get(1)?,
             start_time: row.get(2)?,
             end_time: row.get(3)?,
+            category: row.get(4)?
         })
     })?;
 
@@ -73,6 +86,7 @@ pub fn get_entries_on_date(date: String) -> Result<Vec<Window>> {
             title: row.get(1)?,
             start_time: row.get(2)?,
             end_time: row.get(3)?,
+            category: row.get(4)?
         })
     })?;
 
