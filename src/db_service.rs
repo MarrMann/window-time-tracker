@@ -1,5 +1,7 @@
 use rusqlite::{Connection, Result};
 
+const DATABASE_NAME: &str = "tracked_windows.db";
+
 pub struct Window {
     pub id: i32,
     pub title: String,
@@ -31,7 +33,7 @@ impl Window {
 }
 
 pub fn create_database() -> Result<()> {
-    let conn = Connection::open("mydatabase.db")?;
+    let conn = Connection::open(DATABASE_NAME)?;
     conn.execute(
         "CREATE TABLE IF NOT EXISTS mytable (
             id              INTEGER PRIMARY KEY,
@@ -46,7 +48,7 @@ pub fn create_database() -> Result<()> {
 }
 
 pub fn create_or_update_entry(window: Window) -> Result<()> {
-    let conn = Connection::open("mydatabase.db")?;
+    let conn = Connection::open(DATABASE_NAME)?;
     let mut statement = conn.prepare("SELECT * FROM mytable WHERE title = ? AND start_time = ?")?;
     let windows_iter = statement.query_map(&[&window.title, &window.start_time], |row| {
         Ok(Window {
@@ -78,7 +80,7 @@ pub fn create_or_update_entry(window: Window) -> Result<()> {
 }
 
 pub fn get_entries_on_date(date: String) -> Result<Vec<Window>> {
-    let conn = Connection::open("mydatabase.db")?;
+    let conn = Connection::open(DATABASE_NAME)?;
     let mut statement = conn.prepare("SELECT * FROM mytable WHERE start_time LIKE ?")?;
     let windows_iter = statement.query_map(&[&date], |row| {
         Ok(Window {
