@@ -34,10 +34,12 @@ unsafe extern "system" fn enum_windows_callback(window_handle: HWND, lparam: LPA
     1
 }
 
-pub fn get_open_windows() -> Vec<(String, HWND)> {
+pub fn get_open_windows(top_windows: u32) -> Vec<(String, HWND)> {
     let mut windows: Vec<(String, HWND)> = Vec::new();
     unsafe {
         EnumWindows(Some(enum_windows_callback), &mut windows as *mut _ as LPARAM);
     }
-    windows
+    
+    // Return only the top_windows number of windows
+    windows.iter().take(top_windows as usize).map(|w| w.clone()).collect()
 }
