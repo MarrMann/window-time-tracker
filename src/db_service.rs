@@ -80,9 +80,10 @@ pub fn create_or_update_entry(window: Window) -> Result<()> {
 }
 
 pub fn get_entries_on_date(date: String) -> Result<Vec<Window>> {
-    let conn = Connection::open(DATABASE_NAME)?;
-    let mut statement = conn.prepare("SELECT * FROM mytable WHERE start_time LIKE ?")?;
-    let windows_iter = statement.query_map(&[&date], |row| {
+    println!("Querying {}", date);
+    let conn = Connection::open("mydatabase.db")?;
+    let mut statement = conn.prepare("SELECT * FROM mytable WHERE strftime('%Y-%m-%d', start_time) = :date")?;
+    let windows_iter = statement.query_map(&[(":date", &date)], |row| {
         Ok(Window {
             id: row.get(0)?,
             title: row.get(1)?,
