@@ -1,7 +1,7 @@
 mod window_service;
 mod db_service;
 mod settings_service;
-use std::collections::HashMap;
+use std::collections::{BTreeMap};
 
 use chrono::{Local, Timelike, NaiveTime};
 use db_service::Window;
@@ -45,8 +45,10 @@ fn query_today() {
 
     let mut ordered_projects = generate_project_hashmap();
     for window in windows.clone() {
-        let start_time = NaiveTime::parse_from_str(&window.start_time, "%H:%M").unwrap();
-        let end_time = NaiveTime::parse_from_str(&window.end_time, "%H:%M").unwrap();
+        let start_time_vec = &window.start_time.split_whitespace().collect::<Vec<&str>>();
+        let start_time = NaiveTime::parse_from_str(start_time_vec[1], "%H:%M:%S%.f").unwrap();
+        let end_time_vec = &window.end_time.split_whitespace().collect::<Vec<&str>>();
+        let end_time = NaiveTime::parse_from_str(end_time_vec[1], "%H:%M:%S%.f").unwrap();
         for (time, windows) in ordered_projects.iter_mut() {
           println!("Checking {}", time);
           if start_time >= *time && end_time < *time {
@@ -64,14 +66,13 @@ fn query_today() {
     }
 }
 
-fn generate_project_hashmap() -> HashMap<NaiveTime, Vec<Window>> {
+fn generate_project_hashmap() -> BTreeMap<NaiveTime, Vec<Window>> {
     let settings = Settings::load_from_file();
-    let mut ordered_projects: HashMap<NaiveTime, Vec<Window>> = HashMap::new();
+    let mut ordered_projects: BTreeMap<NaiveTime, Vec<Window>> = BTreeMap::new();
     for hour in 0..24 {
       for minute in settings.minutes_to_save.clone() {
         let time = NaiveTime::from_hms_opt(hour, minute, 0).unwrap();
         ordered_projects.insert(time, Vec::new());
-        println!("Added time {}", time);
       }
     }
 
