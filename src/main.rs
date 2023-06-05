@@ -1,7 +1,9 @@
 mod window_service;
 mod db_service;
 mod settings_service;
-use chrono::{Local, Timelike};
+use std::collections::HashMap;
+
+use chrono::{Local, Timelike, NaiveTime};
 use db_service::Window;
 use settings_service::Settings;
 use tokio::time::{self, Duration};
@@ -40,9 +42,40 @@ fn query_today() {
     print!("Querying {}", today);
     let windows = db_service::get_entries_on_date(today).unwrap();
     println!("Found {} entries", windows.len());
-    for window in windows {
-        println!("Window title: {}", window.title);
+
+    let mut ordered_projects = generate_project_hashmap();
+    for window in windows.clone() {
+        let start_time = NaiveTime::parse_from_str(&window.start_time, "%H:%M").unwrap();
+        let end_time = NaiveTime::parse_from_str(&window.end_time, "%H:%M").unwrap();
+        for (time, windows) in ordered_projects.iter_mut() {
+          println!("Checking {}", time);
+          if start_time >= *time && end_time < *time {
+              windows.push(window.clone());
+          }
+        }
     }
+
+    for projects in ordered_projects {
+        print!("{}: {}", projects.0, projects.1.len());
+        for window in projects.1 {
+            print!(" | {}", window.title);
+        }
+        println!();
+    }
+}
+
+fn generate_project_hashmap() -> HashMap<NaiveTime, Vec<Window>> {
+    let settings = Settings::load_from_file();
+    let mut ordered_projects: HashMap<NaiveTime, Vec<Window>> = HashMap::new();
+    for hour in 0..24 {
+      for minute in settings.minutes_to_save.clone() {
+        let time = NaiveTime::from_hms_opt(hour, minute, 0).unwrap();
+        ordered_projects.insert(time, Vec::new());
+        println!("Added time {}", time);
+      }
+    }
+
+    ordered_projects
 }
 
 async fn get_windows_loop() {

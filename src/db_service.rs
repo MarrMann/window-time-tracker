@@ -2,6 +2,7 @@ use rusqlite::{Connection, Result};
 
 const DATABASE_NAME: &str = "tracked_windows.db";
 
+#[derive(Clone)]
 pub struct Window {
     pub id: i32,
     pub title: String,
@@ -81,7 +82,7 @@ pub fn create_or_update_entry(window: Window) -> Result<()> {
 
 pub fn get_entries_on_date(date: String) -> Result<Vec<Window>> {
     println!("Querying {}", date);
-    let conn = Connection::open("mydatabase.db")?;
+    let conn = Connection::open(DATABASE_NAME)?;
     let mut statement = conn.prepare("SELECT * FROM mytable WHERE strftime('%Y-%m-%d', start_time) = :date")?;
     let windows_iter = statement.query_map(&[(":date", &date)], |row| {
         Ok(Window {

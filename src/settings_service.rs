@@ -5,13 +5,15 @@ use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Settings{
-    pub top_windows_to_save: u32
+    pub top_windows_to_save: u32,
+    pub minutes_to_save: Vec<u32>
 }
 
 impl Settings {
     pub fn new() -> Settings {
         Settings {
-            top_windows_to_save: 5
+            top_windows_to_save: 5,
+            minutes_to_save: vec![5, 20, 35, 50]
         }
     }
 
