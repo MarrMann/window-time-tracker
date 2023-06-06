@@ -45,13 +45,18 @@ fn query_today() {
 
     let mut ordered_projects = generate_project_hashmap();
     for window in windows.clone() {
-        let start_time_vec = &window.start_time.split_whitespace().collect::<Vec<&str>>();
-        let start_time = NaiveTime::parse_from_str(start_time_vec[1], "%H:%M:%S%.f").unwrap();
-        let end_time_vec = &window.end_time.split_whitespace().collect::<Vec<&str>>();
-        let end_time = NaiveTime::parse_from_str(end_time_vec[1], "%H:%M:%S%.f").unwrap();
+      //how2format: parse_from_str("2014-5-17T12:34:56+09:30", "%Y-%m-%dT%H:%M:%S%z")
+      //actual format: 2023-06-05 19:50:35.482704600 +02:00
+
+        // let start_time_vec = &window.start_time.split_whitespace().collect::<Vec<&str>>();
+        let start_time = NaiveTime::parse_from_str(&window.start_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
+        // let end_time_vec = &window.end_time.split_whitespace().collect::<Vec<&str>>();
+        let end_time = NaiveTime::parse_from_str(&window.end_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
         for (time, windows) in ordered_projects.iter_mut() {
-          println!("Checking {}", time);
-          if start_time >= *time && end_time < *time {
+          let time_from_midnight = time.num_seconds_from_midnight();
+          println!("Checking if {} <= {} && {} > {}", start_time.num_seconds_from_midnight() - 900, time_from_midnight, end_time.num_seconds_from_midnight() - 900, time_from_midnight);
+          if start_time.num_seconds_from_midnight() - 900 <= time_from_midnight && end_time.num_seconds_from_midnight() - 900 > time_from_midnight {
+              println!("Matched!");
               windows.push(window.clone());
           }
         }
