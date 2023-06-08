@@ -23,7 +23,7 @@ async fn main() {
                 tokio::spawn(get_windows_loop()).await.unwrap()
             }
             "-q" | "--query" => {
-                if args.len() > 2 {
+                if args.len() > 2 && args[2].len() == 10 {
                     let date = NaiveDate::parse_from_str(&args[2], "%Y-%m-%d").unwrap_or_else(|_|{
                         println!("Incorrect date format, assuming today");
                         Local::now().date_naive()
