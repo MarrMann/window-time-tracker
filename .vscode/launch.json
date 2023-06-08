@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["--query", "2023-06-06"],
             "cwd": "${workspaceFolder}"
         },
         {

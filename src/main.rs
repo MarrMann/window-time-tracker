@@ -3,7 +3,7 @@ mod db_service;
 mod settings_service;
 use std::collections::{BTreeMap};
 
-use chrono::{Local, Timelike, NaiveTime};
+use chrono::{Local, Timelike, NaiveTime, NaiveDate};
 use db_service::Window;
 use settings_service::Settings;
 use tokio::time::{self, Duration};
@@ -23,42 +23,56 @@ async fn main() {
                 tokio::spawn(get_windows_loop()).await.unwrap()
             }
             "-q" | "--query" => {
-                query_today()
+                if args.len() > 2 {
+                    let date = NaiveDate::parse_from_str(&args[2], "%Y-%m-%d").unwrap_or_else(|_|{
+                        println!("Incorrect date format, assuming today");
+                        Local::now().date_naive()
+                    });
+                    query_date(Some(date))
+                }
+                else {
+                  query_date(None)
+                }
             } 
             _ => {
-                println!("Incorrect argument, assuming --query");
-                query_today()
+                println!("Incorrect argument, assuming --run");
+                println!("Running window loop");
+                tokio::spawn(get_windows_loop()).await.unwrap()
             }
         }
     }
     else {
-        println!("No argument, assuming --query");
-        query_today()
+        println!("No argument, assuming --run");
+        println!("Running window loop");
+        tokio::spawn(get_windows_loop()).await.unwrap()
     }
 }
 
-fn query_today() {
-    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    print!("Querying {}", today);
-    let windows = db_service::get_entries_on_date(today).unwrap();
+fn query_date(date: Option<NaiveDate>) {
+    let date_string = match date {
+        Some(d) => d.format("%Y-%m-%d").to_string(),
+        None => Local::now().format("%Y-%m-%d").to_string()
+    };
+    println!("Querying date string {}", date_string);
+    let windows = db_service::get_entries_on_date(date_string).unwrap();
     println!("Found {} entries", windows.len());
 
     let mut ordered_projects = generate_project_hashmap();
     for window in windows.clone() {
-      //how2format: parse_from_str("2014-5-17T12:34:56+09:30", "%Y-%m-%dT%H:%M:%S%z")
-      //actual format: 2023-06-05 19:50:35.482704600 +02:00
+        //how2format: parse_from_str("2014-5-17T12:34:56+09:30", "%Y-%m-%dT%H:%M:%S%z")
+        //actual format: 2023-06-05 19:50:35.482704600 +02:00
 
         // let start_time_vec = &window.start_time.split_whitespace().collect::<Vec<&str>>();
         let start_time = NaiveTime::parse_from_str(&window.start_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
         // let end_time_vec = &window.end_time.split_whitespace().collect::<Vec<&str>>();
         let end_time = NaiveTime::parse_from_str(&window.end_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
         for (time, windows) in ordered_projects.iter_mut() {
-          let time_from_midnight = time.num_seconds_from_midnight();
-          println!("Checking if {} <= {} && {} > {}", start_time.num_seconds_from_midnight() - 900, time_from_midnight, end_time.num_seconds_from_midnight() - 900, time_from_midnight);
-          if start_time.num_seconds_from_midnight() - 900 <= time_from_midnight && end_time.num_seconds_from_midnight() - 900 > time_from_midnight {
-              println!("Matched!");
-              windows.push(window.clone());
-          }
+            let time_from_midnight = time.num_seconds_from_midnight();
+            // println!("Checking if {} <= {} && {} > {}", start_time.num_seconds_from_midnight() - 900, time_from_midnight, end_time.num_seconds_from_midnight() - 900, time_from_midnight);
+            if start_time.num_seconds_from_midnight() - 900 <= time_from_midnight && end_time.num_seconds_from_midnight() - 900 > time_from_midnight {
+                // println!("Matched!");
+                windows.push(window.clone());
+            }
         }
     }
 
@@ -75,10 +89,10 @@ fn generate_project_hashmap() -> BTreeMap<NaiveTime, Vec<Window>> {
     let settings = Settings::load_from_file();
     let mut ordered_projects: BTreeMap<NaiveTime, Vec<Window>> = BTreeMap::new();
     for hour in 0..24 {
-      for minute in settings.minutes_to_save.clone() {
-        let time = NaiveTime::from_hms_opt(hour, minute, 0).unwrap();
-        ordered_projects.insert(time, Vec::new());
-      }
+        for minute in settings.minutes_to_save.clone() {
+            let time = NaiveTime::from_hms_opt(hour, minute, 0).unwrap();
+            ordered_projects.insert(time, Vec::new());
+        }
     }
 
     ordered_projects
