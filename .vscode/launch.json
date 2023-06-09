@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'time-tracker'",
+            "name": "Debug query in executable 'time-tracker'",
             "cargo": {
                 "args": [
                     "build",
@@ -19,7 +19,25 @@
                     "kind": "bin"
                 }
             },
-            "args": ["--query", "2023-06-06"],
+            "args": ["--query"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug run in executable 'time-tracker'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=time-tracker",
+                    "--package=time-tracker"
+                ],
+                "filter": {
+                    "name": "time-tracker",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
             "cwd": "${workspaceFolder}"
         },
         {

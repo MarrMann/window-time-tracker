@@ -15,7 +15,7 @@ impl Window {
     pub fn new(title: String, start_time: String, end_time: String, category: Option<i32>) -> Window {
         Window {
             id: 0,
-            title,
+            title: title.split('\0').collect::<Vec<&str>>()[0].to_string(),
             start_time,
             end_time,
             category

@@ -79,9 +79,27 @@ fn query_date(date: Option<NaiveDate>) {
     for projects in ordered_projects {
         print!("{}: {}", projects.0, projects.1.len());
         for window in projects.1 {
-            print!(" | {}", window.title);
+            // Make sure the title length is always 20 characters
+            let fixed_title = force_length(window.title.replace("|", "-"), 20);
+            println!(" | {}", fixed_title);
         }
         println!();
+    }
+}
+
+fn force_length(string: String, length: usize) -> String {
+    if string.len() > length {
+        string[..length].to_string()
+    } 
+    else if string.len() < length {
+        let mut new_string = string.clone();
+        for _ in 0..length - string.len() {
+            new_string.push(' ');
+        }
+        new_string
+    }
+    else {
+        string
     }
 }
 
