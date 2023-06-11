@@ -53,47 +53,77 @@ fn query_date(date: Option<NaiveDate>) {
         Some(d) => d.format("%Y-%m-%d").to_string(),
         None => Local::now().format("%Y-%m-%d").to_string()
     };
-    println!("Querying date string {}", date_string);
+    println!("Querying date {}", date_string);
     let windows = db_service::get_entries_on_date(date_string).unwrap();
-    println!("Found {} entries", windows.len());
+    println!("Found {} entries\n", windows.len());
+    if windows.len() == 0 {
+        return;
+    }
 
+    println!(" {} | {}", "Time", "Titles");
     let mut ordered_projects = generate_project_hashmap();
     for window in windows.clone() {
         //how2format: parse_from_str("2014-5-17T12:34:56+09:30", "%Y-%m-%dT%H:%M:%S%z")
         //actual format: 2023-06-05 19:50:35.482704600 +02:00
-
-        // let start_time_vec = &window.start_time.split_whitespace().collect::<Vec<&str>>();
         let start_time = NaiveTime::parse_from_str(&window.start_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
-        // let end_time_vec = &window.end_time.split_whitespace().collect::<Vec<&str>>();
         let end_time = NaiveTime::parse_from_str(&window.end_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
         for (time, windows) in ordered_projects.iter_mut() {
             let time_from_midnight = time.num_seconds_from_midnight();
-            // println!("Checking if {} <= {} && {} > {}", start_time.num_seconds_from_midnight() - 900, time_from_midnight, end_time.num_seconds_from_midnight() - 900, time_from_midnight);
             if start_time.num_seconds_from_midnight() - 900 <= time_from_midnight && end_time.num_seconds_from_midnight() - 900 > time_from_midnight {
-                // println!("Matched!");
                 windows.push(window.clone());
             }
         }
     }
 
-    for projects in ordered_projects {
-        print!("{}: {}", projects.0, projects.1.len());
-        for window in projects.1 {
-            // Make sure the title length is always 20 characters
-            let fixed_title = force_length(window.title.replace("|", "-"), 20);
-            println!(" | {}", fixed_title);
+    let mut previous_projects: Vec<Window> = ordered_projects.iter().next().unwrap().1.clone();
+    for mut projects in ordered_projects {
+        if projects.1.len() == 0 {
+            // No current projects, nothing to print
+            previous_projects = projects.1.clone();
+            continue;
         }
+
+        print!("{}", projects.0.format("%H:%M"));
+        
+        if previous_projects.len() == 0 {
+            // Previous projects empty, just print current projects
+            for window in projects.1.iter() {
+                print!(" | {}", clean_window_title(window.title.clone()));
+            }
+
+            println!();
+            previous_projects = projects.1.clone();
+            continue;
+        }
+
+        // Both previous and current projects have entries, compare to keep the order
+        for previous_project in previous_projects {
+            if projects.1.iter().find(|w| w.title == previous_project.title).is_some() {
+                print!(" | {}", clean_window_title(previous_project.title.clone()));
+                projects.1.remove(projects.1.iter().position(|w| w.title == previous_project.title).unwrap());
+            } else {
+                print!(" | {}", clean_window_title(projects.1.remove(0).title.clone()));
+            }
+        }
+
         println!();
+        previous_projects = projects.1.clone();
     }
 }
 
+fn clean_window_title(title: String) -> String {
+    let cleaned_title = title.replace("|", "-").replace("｜", "-");
+    // TODO: Make length configurable
+    force_length(cleaned_title, 20)
+}
+
 fn force_length(string: String, length: usize) -> String {
-    if string.len() > length {
-        string[..length].to_string()
+    if string.chars().count() > length {
+        string.chars().take(length).collect::<String>()
     } 
-    else if string.len() < length {
+    else if string.chars().count() < length {
         let mut new_string = string.clone();
-        for _ in 0..length - string.len() {
+        for _ in 0..length - string.chars().count() {
             new_string.push(' ');
         }
         new_string
