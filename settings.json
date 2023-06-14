@@ -1,1 +1,5 @@
-{"top_windows_to_save":5,"minutes_to_save":[5,20,35,44]}
+{
+  "top_windows_to_save":5,
+  "minutes_to_save":[5,20,35,44],
+  "window_title_length": 20
+}

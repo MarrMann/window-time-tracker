@@ -4,15 +4,15 @@ const DATABASE_NAME: &str = "tracked_windows.db";
 
 #[derive(Clone)]
 pub struct Window {
-    pub id: i32,
+    pub id: u32,
     pub title: String,
     pub start_time: String,
     pub end_time: String,
-    pub category: Option<i32>,
+    pub category: Option<u8>,
 }
 
 impl Window {
-    pub fn new(title: String, start_time: String, end_time: String, category: Option<i32>) -> Window {
+    pub fn new(title: String, start_time: String, end_time: String, category: Option<u8>) -> Window {
         Window {
             id: 0,
             title: title.split('\0').collect::<Vec<&str>>()[0].to_string(),
@@ -68,8 +68,8 @@ pub fn create_or_update_entry(window: Window) -> Result<()> {
 
     if windows.len() == 0 {
         conn.execute(
-            "INSERT INTO mytable (title, start_time, end_time) VALUES (?1, ?2, ?3)",
-            &[&window.title, &window.start_time, &window.end_time],
+            "INSERT INTO mytable (title, start_time, end_time, category) VALUES (?1, ?2, ?3, ?4)",
+            &[&window.title, &window.start_time, &window.end_time, &window.category.unwrap_or(255).to_string()],
         )?;
     } else {
         conn.execute(

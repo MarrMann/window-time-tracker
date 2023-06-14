@@ -8,6 +8,16 @@ use db_service::Window;
 use settings_service::Settings;
 use tokio::time::{self, Duration};
 
+pub mod colors{
+  pub const RED: &str = "\x1b[31m";
+  pub const GREEN: &str = "\x1b[32m";
+  pub const YELLOW: &str = "\x1b[33m";
+  pub const BLUE: &str = "\x1b[34m";
+  pub const MAGENTA: &str = "\x1b[35m";
+  pub const CYAN: &str = "\x1b[36m";
+  pub const WHITE: &str = "\x1b[37m";
+}
+
 #[tokio::main]
 async fn main() {
     match db_service::create_database() {
@@ -88,7 +98,7 @@ fn query_date(date: Option<NaiveDate>) {
         if previous_projects.len() == 0 {
             // Previous projects empty, just print current projects
             for window in projects.1.iter() {
-                print!(" | {}", clean_window_title(window.title.clone()));
+                print!(" | {}", format_window_title(window.title.clone(), window.category));
             }
 
             println!();
@@ -98,23 +108,43 @@ fn query_date(date: Option<NaiveDate>) {
 
         // Both previous and current projects have entries, compare to keep the order
         for previous_project in previous_projects {
+            let printed_project: Window = 
             if projects.1.iter().find(|w| w.title == previous_project.title).is_some() {
-                print!(" | {}", clean_window_title(previous_project.title.clone()));
-                projects.1.remove(projects.1.iter().position(|w| w.title == previous_project.title).unwrap());
+                projects.1.remove(projects.1.iter().position(|w| w.title == previous_project.title)
+                    .expect("There was a match for the previous project, so there should be here too since the match is the same"));
+                previous_project.clone()
             } else {
-                print!(" | {}", clean_window_title(projects.1.remove(0).title.clone()));
-            }
+                projects.1.remove(0)
+            };
+            print!(" | {}", format_window_title(printed_project.title.clone(), printed_project.category));
         }
-
         println!();
         previous_projects = projects.1.clone();
     }
 }
 
-fn clean_window_title(title: String) -> String {
-    let cleaned_title = title.replace("|", "-").replace("｜", "-");
-    // TODO: Make length configurable
-    force_length(cleaned_title, 20)
+fn format_window_title(title: String, category: Option<u8>) -> String {
+    let settings = Settings::load_from_file();
+    let mut cleaned_title = title.replace("|", "-").replace("｜", "-");
+    cleaned_title = force_length(cleaned_title, settings.window_title_length.try_into().expect("u32 should always fit usize "));
+
+    // TODO: Change this to a lookup table
+    match category {
+        Some(c) => {
+            let color = match c {
+                0 => colors::RED,
+                1 => colors::GREEN,
+                2 => colors::YELLOW,
+                3 => colors::BLUE,
+                4 => colors::MAGENTA,
+                5 => colors::CYAN,
+                6 => colors::WHITE,
+                _ => colors::WHITE
+            };
+            format!("{}{}\x1b[0m", color, cleaned_title)
+        },
+        None => cleaned_title
+    }
 }
 
 fn force_length(string: String, length: usize) -> String {
@@ -160,11 +190,16 @@ async fn get_windows_loop() {
             
             let mut new_windows: Vec<Window> = Vec::new();
             for window in windows.clone() {
+                let mut category: Option<u8> = None;
+                settings.projects.iter().find(|p| p.keywords.iter().any(|k| window.0.to_lowercase().contains(&k.to_lowercase()))).map(|p| {
+                    category = Some(p.category.clone());
+                });
+
                 let mut db_window = db_service::Window::new(
                     window.0.clone(),
                     now.to_string(),
                     (now + chrono::Duration::minutes(15)).to_string(),
-                    None
+                    category
                 );
                 previous_windows.iter().find(|w| w.title == window.0).map(|w| {
                     db_window.start_time = w.start_time.clone();
