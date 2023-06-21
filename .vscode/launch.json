@@ -20,7 +20,7 @@
                 }
             },
             "args": ["--query"],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}/target/debug"
         },
         {
             "type": "lldb",

@@ -70,23 +70,24 @@ fn query_date(date: Option<NaiveDate>) {
         return;
     }
 
-    println!(" {} | {}", "Time", "Titles");
+    // Projects ordered by time
     let mut ordered_projects = generate_project_hashmap();
     for window in windows.clone() {
         //how2format: parse_from_str("2014-5-17T12:34:56+09:30", "%Y-%m-%dT%H:%M:%S%z")
         //actual format: 2023-06-05 19:50:35.482704600 +02:00
         let start_time = NaiveTime::parse_from_str(&window.start_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
         let end_time = NaiveTime::parse_from_str(&window.end_time, "%Y-%m-%d %H:%M:%S%.f %z").unwrap();
-        for (time, windows) in ordered_projects.iter_mut() {
+        for (time, ordered_windows) in ordered_projects.iter_mut() {
             let time_from_midnight = time.num_seconds_from_midnight();
             if start_time.num_seconds_from_midnight() - 900 <= time_from_midnight && end_time.num_seconds_from_midnight() - 900 > time_from_midnight {
-                windows.push(window.clone());
+                ordered_windows.push(window.clone());
             }
         }
     }
-
+    
+    println!(" {} | {}", "Time", "Titles");
     let mut previous_projects: Vec<Window> = ordered_projects.iter().next().unwrap().1.clone();
-    for mut projects in ordered_projects {
+    for projects in ordered_projects {
         if projects.1.len() == 0 {
             // No current projects, nothing to print
             previous_projects = projects.1.clone();
@@ -95,31 +96,32 @@ fn query_date(date: Option<NaiveDate>) {
 
         print!("{}", projects.0.format("%H:%M"));
         
-        if previous_projects.len() == 0 {
-            // Previous projects empty, just print current projects
-            for window in projects.1.iter() {
-                print!(" | {}", format_window_title(window.title.clone(), window.category));
-            }
-
-            println!();
-            previous_projects = projects.1.clone();
-            continue;
-        }
-
-        // Both previous and current projects have entries, compare to keep the order
+        let mut new_previous_projects: Vec<Window> = Vec::new();
+        let mut removable_projects = projects.1.clone();
+        // Both previous and current projects could have entries, compare to keep the order
         for previous_project in previous_projects {
-            let printed_project: Window = 
-            if projects.1.iter().find(|w| w.title == previous_project.title).is_some() {
-                projects.1.remove(projects.1.iter().position(|w| w.title == previous_project.title)
+            let printed_project: Window = if removable_projects.iter().find(|w| w.title == previous_project.title).is_some() {
+                removable_projects.remove(removable_projects.iter().position(|w| w.title == previous_project.title)
                     .expect("There was a match for the previous project, so there should be here too since the match is the same"));
                 previous_project.clone()
             } else {
-                projects.1.remove(0)
+                if removable_projects.len() == 0 {
+                    break;
+                }
+                removable_projects.remove(0)
             };
+            new_previous_projects.push(printed_project.clone());
             print!(" | {}", format_window_title(printed_project.title.clone(), printed_project.category));
         }
+
+        // Print the rest, or if there were no previous projects, print current ones
+        for window in removable_projects.iter() {
+            new_previous_projects.push(window.clone());
+            print!(" | {}", format_window_title(window.title.clone(), window.category));
+        }
+
         println!();
-        previous_projects = projects.1.clone();
+        previous_projects = new_previous_projects;
     }
 }
 
@@ -177,7 +179,6 @@ fn generate_project_hashmap() -> BTreeMap<NaiveTime, Vec<Window>> {
 }
 
 async fn get_windows_loop() {
-    let settings = Settings::load_from_file();
     let mut interval = time::interval(Duration::from_secs(60));
     let mut previous_windows: Vec<Window> = Vec::new();
 
@@ -186,6 +187,7 @@ async fn get_windows_loop() {
         let now = Local::now();
         let minute = now.minute();
         if [5, 20, 35, 50].contains(&minute) {
+            let settings = Settings::load_from_file(); // Reload settings every loop in case they have changed
             let windows = window_service::get_open_windows(settings.top_windows_to_save);
             
             let mut new_windows: Vec<Window> = Vec::new();
